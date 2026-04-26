@@ -35,6 +35,7 @@ def process_video(job_id, input_path, output_path, region, method):
     try:
         jobs[job_id]['status'] = 'processing'
         jobs[job_id]['progress'] = 10
+        jobs[job_id]['message'] = 'Analyzing your video…'
 
         # Get video info
         probe_cmd = [
@@ -44,6 +45,7 @@ def process_video(job_id, input_path, output_path, region, method):
         result = subprocess.run(probe_cmd, capture_output=True, text=True, timeout=30)
         
         jobs[job_id]['progress'] = 20
+        jobs[job_id]['message'] = 'Building filter…'
 
         # Build FFmpeg filter based on region and method
         # region: 'bottom', 'top', 'full', 'custom'
@@ -76,6 +78,7 @@ def process_video(job_id, input_path, output_path, region, method):
                 vf = "delogo=x=0:y=0:w=iw:h=ih:show=0"
 
         jobs[job_id]['progress'] = 30
+        jobs[job_id]['message'] = 'Removing text from every frame — hang tight…'
 
         # FFmpeg command - high quality output
         cmd = [
@@ -84,7 +87,7 @@ def process_video(job_id, input_path, output_path, region, method):
             '-vf', vf,
             '-c:v', 'libx264',
             '-crf', '18',          # High quality (0=lossless, 23=default, 18=visually lossless)
-            '-preset', 'medium',
+            '-preset', 'ultrafast',   # Much faster — minimal quality difference
             '-c:a', 'copy',        # Copy audio without re-encoding
             '-movflags', '+faststart',  # Web-optimized
             output_path
@@ -98,6 +101,7 @@ def process_video(job_id, input_path, output_path, region, method):
 
         # Monitor progress
         jobs[job_id]['progress'] = 40
+        jobs[job_id]['message'] = 'Processing frames — almost there…'
         stdout, stderr = process.communicate(timeout=300)
         
         if process.returncode != 0:
@@ -105,6 +109,7 @@ def process_video(job_id, input_path, output_path, region, method):
 
         jobs[job_id]['status'] = 'done'
         jobs[job_id]['progress'] = 100
+        jobs[job_id]['message'] = 'All done! Your video is ready.'
         jobs[job_id]['output'] = output_path
 
     except subprocess.TimeoutExpired:
@@ -182,6 +187,7 @@ def get_status(job_id):
     return jsonify({
         'status': job['status'],
         'progress': job['progress'],
+        'message': job.get('message', ''),
         'error': job.get('error')
     })
 
